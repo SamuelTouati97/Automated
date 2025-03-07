@@ -2,7 +2,7 @@ require('dotenv').config();
 const { Client, GatewayIntentBits } = require('discord.js');
 const axios = require('axios');
 
-const token = process.env.DISCORD_TOKEN;
+const token = process.env.DISCORD_GIT_TOKEN;
 
 const client = new Client({ 
   intents: [
