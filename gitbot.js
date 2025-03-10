@@ -13,7 +13,7 @@ const client = new Client({
 });
 
 client.once('ready', () => {
-  console.log('Bot is online!');
+  console.log('✅ Bot is online!');
 });
 
 client.on('messageCreate', async (message) => {
@@ -23,10 +23,10 @@ client.on('messageCreate', async (message) => {
       try {
         const response = await axios.get('https://api.github.com/repos/SamuelTouati97/Automated'); 
         console.log('GitHub API Response:', response.data); 
-        message.channel.send(`Repo Name: ${response.data.name}\nStars: ${response.data.stargazers_count}`);
+        message.channel.send(`Repo Name: ${response.data.name}`);
       } catch (error) {
         console.error('GitHub API error:', error); 
-        message.channel.send('Error fetching GitHub info');
+        message.channel.send('❌ Error fetching GitHub info');
       }
     }
   });

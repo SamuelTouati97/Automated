@@ -35,20 +35,20 @@ client.on('messageCreate', async (message) => {
     if (message.content.startsWith('!build ')) {
         const jobName = message.content.split(' ')[1];
         if (!jobName) {
-            return message.reply('❌ Tu dois spécifier un nom de job Jenkins !');
+            return message.reply('❌ Have to specify jenkins jobname');
         }
 
         const success = await triggerJenkinsBuild(jobName);
         if (success) {
-            message.reply(`🚀 Build lancé pour **${jobName}** !`);
+            message.reply(`🚀 Build lauch for **${jobName}** !`);
         } else {
-            message.reply(`❌ Erreur lors du lancement du build **${jobName}**.`);
+            message.reply(`❌ Error runing the builds **${jobName}**.`);
         }
     }
 });
 
 client.once('ready', () => {
-    console.log(`✅ Bot connecté en tant que ${client.user.tag}`);
+    console.log(`✅ Bot connected as ${client.user.tag}`);
 });
 
 client.login(DISCORD_JENK_TOKEN);
