@@ -7,7 +7,7 @@ const JIRA_URL = process.env.JIRA_URL;
 const JIRA_USER = process.env.JIRA_USER;
 const JIRA_API_TOKEN = process.env.JIRA_API_TOKEN;
 const GUILD_ID = process.env.GUILD_ID;
-const JQL_QUERY = "project = CONDEV ORDER BY created DESC"; 
+const JQL_QUERY = "project = CONDEV ORDER BY created DESC";
 
 const client = new Client({
     intents: [
@@ -19,90 +19,69 @@ const client = new Client({
 
 let lastCheckedIssue = null;
 
+// get last ticket
+async function fetchLatestJiraIssue() {
+    try {
+        const response = await axios.get(
+            `${JIRA_URL}/rest/api/2/search?jql=${encodeURIComponent(JQL_QUERY)}&maxResults=1`,
+            {
+                auth: { username: JIRA_USER, password: JIRA_API_TOKEN },
+                headers: { Accept: "application/json" },
+            }
+        );
+
+        if (response.status === 200 && response.data.issues.length > 0) {
+            const latestIssue = response.data.issues[0];
+            return {
+                key: latestIssue.key,
+                summary: latestIssue.fields.summary,
+                link: `${JIRA_URL}/browse/${latestIssue.key}`
+            };
+        }
+    } catch (error) {
+        console.error("❌ Error while retrieving Jira:", error.message);
+    }
+    return null;
+}
+
+// get last ticket with !jira
 async function getLatestJiraIssue() {
-    try {
-        const response = await axios.get(
-            `${JIRA_URL}/rest/api/2/search?jql=${encodeURIComponent(JQL_QUERY)}&maxResults=1`, 
-            {
-                auth: { username: JIRA_USER, password: JIRA_API_TOKEN },
-                headers: { Accept: "application/json" },
-            }
-        );
-
-        if (response.status === 200) {
-            const issues = response.data.issues;
-            if (issues.length > 0) {
-                const latestIssue = issues[0];
-                const issueKey = latestIssue.key;
-                const issueSummary = latestIssue.fields.summary;
-                const issueLink = `${JIRA_URL}/browse/${issueKey}`;
-                
-                return `🔔 **New Jira Issue**: **${issueKey}** - ${issueSummary}\n🔗 ${issueLink}`;
-            }
-        }
-    } catch (error) {
-        console.error("❌ Error while retrieving Jira:", error.message);
-        return "❌ Unable to fetch Jira updates.";
-    }
-    return "❌ No issues found.";
+    const issue = await fetchLatestJiraIssue();
+    return issue 
+        ? `🔔 **New Jira Issue**: **${issue.key}** - ${issue.summary}\n🔗 ${issue.link}`
+        : "❌ No issues found.";
 }
 
+// Vérification périodique des nouveaux tickets
 async function checkJira() {
-    try {
-        const response = await axios.get(
-            `${JIRA_URL}/rest/api/2/search?jql=${encodeURIComponent(JQL_QUERY)}&maxResults=1`, 
-            {
-                auth: { username: JIRA_USER, password: JIRA_API_TOKEN },
-                headers: { Accept: "application/json" },
-            }
-        );
-
-        if (response.status === 200) {
-            const issues = response.data.issues;
-            if (issues.length > 0) {
-                const latestIssue = issues[0];
-                const issueKey = latestIssue.key;
-                const issueSummary = latestIssue.fields.summary;
-
-                if (issueKey !== lastCheckedIssue) {
-                    lastCheckedIssue = issueKey;
-
-                    const guild = client.guilds.cache.get(GUILD_ID);
-                    if (!guild) {
-                        console.error("❌ Can't find server");
-                        return;
-                    }
-
-                    guild.channels.cache.forEach(async (channel) => {
-                        if (
-                            channel.isTextBased() &&
-                            channel.permissionsFor(client.user).has(PermissionsBitField.Flags.SendMessages)
-                        ) {
-                            channel.send(
-                                `🔔 **New Jira Issue**: **${issueKey}** - ${issueSummary}\n🔗 ${JIRA_URL}/browse/${issueKey}`
-                            );
-                        }
-                    });
-                }
-            }
+    const issue = await fetchLatestJiraIssue();
+    if (issue && issue.key !== lastCheckedIssue) {
+        lastCheckedIssue = issue.key;
+        const guild = client.guilds.cache.get(GUILD_ID);
+        if (!guild) {
+            console.error("❌ Can't find server");
+            return;
         }
-    } catch (error) {
-        console.error("❌ Error while retrieving Jira:", error.message);
+        guild.channels.cache.forEach(async (channel) => {
+            if (
+                channel.isTextBased() &&
+                channel.permissionsFor(client.user).has(PermissionsBitField.Flags.SendMessages)
+            ) {
+                channel.send(`🔔 **New Jira Issue**: **${issue.key}** - ${issue.summary}\n🔗 ${issue.link}`);
+            }
+        });
     }
 }
+
 
 client.once("ready", async () => {
     console.log(`✅ Connected as ${client.user.tag}`);
-    
-
-    setInterval(checkJira, 1000);  
+    setInterval(checkJira, 10000); //all 10 sec update
 });
 
-client.on("messageCreate", async (message) => {
- 
-    if (message.author.bot) return;
 
- 
+client.on("messageCreate", async (message) => {
+    if (message.author.bot) return;
     if (message.content.toLowerCase() === "!jira") {
         const jiraUpdate = await getLatestJiraIssue();
         message.channel.send(jiraUpdate);
